@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+/* Define water filling effect animation */
+@keyframes waterFillingEffect {
+  0% {
+    background-position: 0 100%;
+    background-size: 200% 200%;
+  }
+  50% {
+    background-position: 100% 0%;
+    background-size: 200% 200%;
+  }
+  100% {
+    background-position: 0 100%;
+    background-size: 200% 200%;
+  }
+}
+
+/* Water effect animation for the background */
+.animate-waterFilling {
+  animation: waterFillingEffect 10s infinite linear;
+  background-size: 200% 200%;
+  background-image: linear-gradient(to bottom, #00b5e2, #4fa3ff, #006f9f, #003c5d);
+  position: absolute;
+  inset: 0;
+  opacity: 0.7;
+}
