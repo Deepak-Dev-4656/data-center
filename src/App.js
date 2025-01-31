@@ -6,14 +6,12 @@ import VideoUpload from './components/VideoUpload';
 import PdfUpload from './components/PdfUpload';
 import MusicUpload from './components/MusicUpload';
 import TextEditor from './components/TextEditor';
-
+import Resume from './components/Resume';
 function App() {
   return (
     <Router>
       <div className="bg-gray-100 min-h-screen">
-        <header className="bg-blue-600 text-white p-4 text-center">
-          <h1 className="text-2xl font-bold">Media Management Platform</h1>
-        </header>
+        
         <main className="p-4">
           <Routes>
             <Route path="/" element={<HomePage />} />  {/* HomePage as the default route */}
@@ -22,6 +20,7 @@ function App() {
             <Route path="/pdfs" element={<PdfUpload />} />
             <Route path="/music" element={<MusicUpload />} />
             <Route path="/text" element={<TextEditor />} />
+            <Route path='/resume' element={<Resume />} />
           </Routes>
         </main>
       </div>
