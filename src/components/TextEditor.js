@@ -1,69 +1,155 @@
-import React, { useState } from 'react';
-import { db } from '../services/firebase'; // Assuming Firebase service is set up
-
+import React, { useState, useEffect, useRef } from 'react';
+import { addDoc, collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { FaBold, FaItalic, FaUnderline, FaTrash, FaSave, FaArrowLeft, FaDownload, FaHeading, FaFileAlt } from 'react-icons/fa';
+import DrawingCanvas from './DrawingCanvas';
 const TextEditor = () => {
-  const [text, setText] = useState('');
-  const [highlightedText, setHighlightedText] = useState('');
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [fileDate, setFileDate] = useState('');
+  const [textColor, setTextColor] = useState('#000000');
+  const [bgColor, setBgColor] = useState('#ffffff');
+  const [fontSize, setFontSize] = useState('16px');
+  const [pageSize, setPageSize] = useState('A4');
+  const editorRef = useRef(null);
 
-  // Handle changes to the text area
-  const handleChange = (e) => {
-    setText(e.target.value);
+  const filesCollection = collection(db, 'TextFiles');
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  const fetchFiles = async () => {
+    try {
+      const snapshot = await getDocs(filesCollection);
+      const filesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setFiles(filesData);
+    } catch (error) {
+      console.error('Error fetching files:', error.message);
+    }
   };
 
-  // Save text to Firebase Firestore
-  const handleSave = async () => {
-    if (text.trim() !== '') {
+  const openModal = () => {
+    setIsModalOpen(true);
+    setFileName('');
+    setFileDate('');
+  };
+
+  const closeModal = () => setIsModalOpen(false);
+
+  const saveNewFile = async () => {
+    if (fileName.trim() && fileDate.trim()) {
       try {
-        await db.collection('TextEntries').add({
-          content: text,
-          createdAt: new Date(),
-        });
-        alert('Text saved successfully!');
+        const newFile = { name: fileName, date: fileDate, content: '' };
+        const docRef = await addDoc(filesCollection, newFile);
+        setFiles([...files, { id: docRef.id, ...newFile }]);
+        closeModal();
+        alert('File created successfully!');
       } catch (error) {
-        console.error('Error saving text:', error);
-        alert('Failed to save text!');
+        alert('Failed to create file!');
+      }
+    } else {
+      alert('Please provide a file name and date.');
+    }
+  };
+
+  const openFile = (file) => {
+    setSelectedFile(file);
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = file.content;
+      }
+    }, 0);
+  };
+
+  const saveFile = async () => {
+    if (selectedFile) {
+      try {
+        const fileRef = doc(db, 'TextFiles', selectedFile.id);
+        await updateDoc(fileRef, { content: editorRef.current.innerHTML });
+        alert('File saved successfully!');
+        fetchFiles();
+      } catch (error) {
+        alert('Failed to save file!');
       }
     }
   };
 
-  // Handle text highlighting
-  const handleHighlight = (e) => {
-    const selectedText = window.getSelection().toString();
-    if (selectedText) {
-      setHighlightedText(selectedText);
-      document.execCommand('backColor', false, 'yellow');
+  const deleteFile = async (fileId) => {
+    try {
+      await deleteDoc(doc(db, 'TextFiles', fileId));
+      setFiles(files.filter(file => file.id !== fileId));
+      alert('File deleted successfully!');
+    } catch (error) {
+      alert('Failed to delete file!');
     }
   };
 
+  const applyStyle = (command) => {
+    document.execCommand(command, false, null);
+  };
+
+  const applyColors = () => {
+    document.execCommand('foreColor', false, textColor);
+    document.execCommand('hiliteColor', false, bgColor);
+  };
+
+  const downloadFile = () => {
+    const element = document.createElement('a');
+    const file = new Blob([editorRef.current.innerHTML], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${selectedFile.name}.txt`;
+    document.body.appendChild(element);
+    element.click();
+  };
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
-      <h2 className="text-xl font-semibold mb-4">Text Editor</h2>
-      <div className="flex justify-between mb-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={handleHighlight}
-        >
-          Highlight Text
-        </button>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded"
-          onClick={handleSave}
-        >
-          Save Text
-        </button>
-      </div>
-      <textarea
-        value={text}
-        onChange={handleChange}
-        placeholder="Start writing here..."
-        rows="10"
-        className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-      />
-      {highlightedText && (
-        <p className="mt-2 text-yellow-600">
-          Highlighted text: <strong>{highlightedText}</strong>
-        </p>
-      )}
+    <div className="min-h-screen bg-gray-100 p-6">
+      <header className="bg-blue-600 text-white p-6 flex justify-between rounded-b-xl">
+        <h1 className="text-2xl font-bold">Text Editor</h1>
+        <button className="bg-white text-blue-600 px-4 py-2 rounded" onClick={openModal}>+ Add File</button>
+      </header>
+
+      <main className="p-6">
+        {selectedFile ? (
+          <div className="bg-white p-6 rounded shadow">
+            <h2 className="text-xl font-semibold">{selectedFile.name}</h2>
+            <div className="flex space-x-4 my-4">
+              <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+              <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+              <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={applyColors}>Apply Color</button>
+              <select value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
+                <option value="A4">A4</option>
+                <option value="Letter">Letter</option>
+                <option value="Legal">Legal</option>
+              </select>
+              <button className="bg-gray-500 text-white px-3 py-1 rounded" onClick={() => applyStyle('bold')}><FaBold /></button>
+              <button className="bg-gray-500 text-white px-3 py-1 rounded" onClick={() => applyStyle('italic')}><FaItalic /></button>
+              <button className="bg-gray-500 text-white px-3 py-1 rounded" onClick={() => applyStyle('underline')}><FaUnderline /></button>
+              <button className="bg-gray-700 text-white px-3 py-1 rounded" onClick={() => applyStyle('formatBlock', '<h1>')}><FaHeading /></button>
+              <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={downloadFile}><FaDownload /></button>
+            </div>
+            <div ref={editorRef} contentEditable className="w-full p-4 border border-gray-300 rounded min-h-[600px] bg-gray-50"></div>
+            <div className="flex justify-between mt-4">
+              <button className="bg-gray-500 text-white px-4 py-2 rounded" onClick={() => setSelectedFile(null)}><FaArrowLeft /> Back</button>
+              <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={saveFile}><FaSave /> Save</button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {files.map((file) => (
+              <div key={file.id} className="bg-white p-4 rounded shadow cursor-pointer">
+                <h2 className="text-lg font-semibold" onClick={() => openFile(file)}>{file.name}</h2>
+                <p className="text-gray-500">{file.date}</p>
+                <button className="bg-red-500 text-white px-3 py-1 rounded mt-2" onClick={() => deleteFile(file.id)}><FaTrash /> Delete</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+      <DrawingCanvas/>
     </div>
   );
 };

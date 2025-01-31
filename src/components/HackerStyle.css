@@ -1,0 +1,197 @@
+/* General hacker container styling */
+.hacker-container {
+    position: relative;
+    min-height: 100vh;
+    background: black;
+    overflow: hidden;
+    font-family: "Courier New", Courier, monospace;
+  }
+  
+  /* Overlay for hacker-style background */
+  .hacker-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(20, 20, 20, 1) 100%);
+    z-index: -2;
+  }
+  
+  .hacker-overlay:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('https://i.pinimg.com/originals/99/91/63/9991632eb9cf9d8be34b798204b17964.gif')
+      no-repeat center center;
+    background-size: cover;
+    opacity: 0.1;
+    z-index: -1;
+    animation: flicker 3s infinite alternate;
+  }
+  
+  /* Glitch text styling */
+  .glitch-text {
+    position: relative;
+    color: #0aff0a;
+    text-shadow: 0px 0px 3px #00ff00, 0px 0px 8px #00ff00;
+    animation: glitch 2s infinite;
+  }
+  
+  .glitch-text::before,
+  .glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #ff00ff;
+    background: black;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    animation: glitch-lines 2.5s infinite;
+  }
+  
+  .glitch-text::before {
+    left: 2px;
+    text-shadow: -1px 0 red;
+  }
+  
+  .glitch-text::after {
+    left: -2px;
+    text-shadow: -1px 0 blue;
+  }
+  
+  /* Dropzone container */
+  .dropzone-container {
+    border: 3px dashed #0aff0a;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0px 0px 20px #00ff00;
+  }
+  
+  .dropzone-container:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+    border-color: #00ffea;
+    animation: pulse-border 1.5s infinite;
+  }
+  
+  /* Upload button */
+  .upload-button {
+    background: linear-gradient(90deg, #00ff00, #005500);
+    padding: 15px 30px;
+    border-radius: 8px;
+    color: black;
+    font-weight: bold;
+    text-shadow: 0px 0px 5px #00ff00;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .upload-button::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 255, 0, 0.2), rgba(0, 0, 0, 0));
+    transform: scale(0);
+    opacity: 0.5;
+    transition: transform 0.5s, opacity 0.5s;
+    z-index: -1;
+  }
+  
+  .upload-button:hover::before {
+    transform: scale(1);
+    opacity: 1;
+  }
+  
+  .upload-button:hover {
+    transform: scale(1.1) rotate(1deg);
+    background: linear-gradient(90deg, #005500, #00ff00);
+    box-shadow: 0px 0px 20px #00ff00, 0px 0px 40px #00ff00;
+  }
+  
+  /* Progress bar */
+  .progress-bar-container {
+    background: #222;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  
+  .progress-bar-inner {
+    height: 12px;
+    background: linear-gradient(90deg, #00ff00, #00ff80);
+    box-shadow: 0px 0px 10px #00ff00;
+    transition: width 0.3s ease-in-out;
+  }
+  
+  /* Neon link styling */
+  .neon-link {
+    color: #00ff00;
+    text-decoration: none;
+    font-weight: bold;
+    text-shadow: 0px 0px 5px #00ff00, 0px 0px 10px #00ff00;
+    transition: color 0.3s ease-in-out, text-shadow 0.3s ease-in-out;
+  }
+  
+  .neon-link:hover {
+    color: #ffffff;
+    text-shadow: 0px 0px 15px #00ff00, 0px 0px 30px #00ff00;
+  }
+  
+  /* Keyframes for animations */
+  @keyframes glitch {
+    0% {
+      text-shadow: 2px 0 red, -2px 0 blue;
+    }
+    50% {
+      text-shadow: -2px 0 red, 2px 0 blue;
+    }
+    100% {
+      text-shadow: 2px 0 red, -2px 0 blue;
+    }
+  }
+  
+  @keyframes glitch-lines {
+    0% {
+      clip: rect(0, 900px, 0, 0);
+    }
+    50% {
+      clip: rect(0, 0, 900px, 0);
+    }
+    100% {
+      clip: rect(900px, 0, 0, 0);
+    }
+  }
+  
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0px 0px 10px #00ff00;
+    }
+    50% {
+      box-shadow: 0px 0px 20px #00ff00;
+    }
+    100% {
+      box-shadow: 0px 0px 10px #00ff00;
+    }
+  }
+  
+  @keyframes flicker {
+    0%,
+    100% {
+      opacity: 0.1;
+    }
+    50% {
+      opacity: 0.2;
+    }
+  }
+  

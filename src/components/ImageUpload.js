@@ -1,26 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Trash, Share2, Download, Image, CheckCircle, XCircle, Loader2, Plus } from 'lucide-react';
+import { motion } from "framer-motion";
+import ImageModal from "./ImageModal"; // Make sure ImageModal is imported correctly
 
 const ImageUpload = () => {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]); // Store multiple images
   const [uploading, setUploading] = useState(false);
-  const [imageUrls, setImageUrls] = useState([]);
+  const [imageUrls, setImageUrls] = useState([]); // Array to store uploaded image URLs
   const [showModal, setShowModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [progress, setProgress] = useState(0); // To track upload progress
-  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
+  const [selectedForActions, setSelectedForActions] = useState([]); // Selected images for actions
+  const [progress, setProgress] = useState(0);
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+  const MAX_FILES = 25; // Maximum number of files allowed
 
-  // Function to handle file selection
+  // Function to handle multiple file selection
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert('File size exceeds 1MB! Please select a smaller image.');
-      } else {
-        setSelectedImage(file);
-      }
+    const files = Array.from(e.target.files);
+    if (files.length + selectedImages.length > MAX_FILES) {
+      alert(`You can only upload up to ${MAX_FILES} images.`);
+      return;
     }
+
+    const validFiles = files.filter((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`${file.name} exceeds 1MB! Skipping this file.`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedImages((prev) => [...prev, ...validFiles]);
   };
 
   // Function to trigger file input click
@@ -28,225 +39,230 @@ const ImageUpload = () => {
     document.getElementById('image-input').click();
   };
 
-  // Function to upload image to Cloudinary
-  const uploadImage = async () => {
-    if (!selectedImage) {
-      alert('Please select an image first!');
+  // Upload multiple images to Cloudinary
+  const uploadImages = async () => {
+    if (selectedImages.length === 0) {
+      alert('Please select images to upload!');
       return;
     }
 
     setUploading(true);
-    setProgress(0); // Reset progress
+    setProgress(0);
 
-    const formData = new FormData();
-    formData.append('file', selectedImage);
-    formData.append('upload_preset', 'imagestor'); // Use your Cloudinary preset
-
+    const uploadedUrls = [];
     try {
-      const response = await axios.post(
-        'https://api.cloudinary.com/v1_1/drqf2lmep/image/upload', // Use your Cloudinary cloud name
-        formData, {
-          onUploadProgress: (progressEvent) => {
-            const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-            setProgress(percent); // Update progress state
-          },
-        }
-      );
+      for (let i = 0; i < selectedImages.length; i++) {
+        const formData = new FormData();
+        formData.append('file', selectedImages[i]);
+        formData.append('upload_preset', 'imagestor');
 
-      const { url } = response.data;
+        const response = await axios.post(
+          'https://api.cloudinary.com/v1_1/drqf2lmep/image/upload',
+          formData,
+          {
+            onUploadProgress: (progressEvent) => {
+              const percent = Math.round(
+                ((progressEvent.loaded + i * progressEvent.total) /
+                  (selectedImages.length * progressEvent.total)) *
+                  100
+              );
+              setProgress(percent);
+            },
+          }
+        );
 
-      // Update the gallery with the new image without removing existing images
+        uploadedUrls.push(response.data.url);
+      }
+
       setImageUrls((prevUrls) => {
-        const updatedUrls = [...prevUrls, url]; // Add new image URL to the existing array
-        localStorage.setItem('uploadedImages', JSON.stringify(updatedUrls)); // Save to localStorage
+        const updatedUrls = [...prevUrls, ...uploadedUrls];
+        localStorage.setItem('uploadedImages', JSON.stringify(updatedUrls));
         return updatedUrls;
       });
-      setSelectedImage(null); // Reset the selected image after upload
-      alert('Image uploaded successfully!');
+
+      alert('Images uploaded successfully!');
+      setSelectedImages([]);
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Failed to upload image!');
+      console.error('Error uploading images:', error);
+      alert('Failed to upload images!');
     } finally {
       setUploading(false);
-      setProgress(0); // Reset progress after upload
+      setProgress(0);
     }
   };
 
   // Load image URLs from localStorage on component mount
   useEffect(() => {
     const savedImageUrls = JSON.parse(localStorage.getItem('uploadedImages')) || [];
-    setImageUrls(savedImageUrls); // Load the saved image URLs
+    setImageUrls(savedImageUrls);
   }, []);
 
-  // Function to open the modal with the full image
+  // Open modal to view full image
   const openModal = (url) => {
     setModalImageUrl(url);
     setShowModal(true);
   };
 
-  // Function to close the modal
+  // Close modal
   const closeModal = () => {
     setShowModal(false);
     setModalImageUrl('');
   };
 
-  // Handle image selection (for multi-select and actions like delete or share)
+  // Select or deselect image for actions
   const handleSelectImage = (url) => {
-    setSelectedImages((prevSelected) => {
-      if (prevSelected.includes(url)) {
-        return prevSelected.filter((image) => image !== url); // Deselect image
+    setSelectedForActions((prev) => {
+      if (prev.includes(url)) {
+        return prev.filter((image) => image !== url);
       } else {
-        return [...prevSelected, url]; // Select image
+        return [...prev, url];
       }
     });
   };
 
   // Delete selected images
   const handleDeleteSelected = () => {
-    const newImageUrls = imageUrls.filter((url) => !selectedImages.includes(url));
+    const newImageUrls = imageUrls.filter((url) => !selectedForActions.includes(url));
     setImageUrls(newImageUrls);
-    localStorage.setItem('uploadedImages', JSON.stringify(newImageUrls)); // Update localStorage
-    setSelectedImages([]); // Clear selected images
+    localStorage.setItem('uploadedImages', JSON.stringify(newImageUrls));
+    setSelectedForActions([]);
     alert('Selected images deleted!');
   };
 
   // Share selected images on WhatsApp
   const handleShareSelected = () => {
-    const shareLinks = selectedImages.join('\n');
+    const shareLinks = selectedForActions.join('\n');
     const whatsappLink = `https://wa.me/?text=${encodeURIComponent(shareLinks)}`;
     window.open(whatsappLink, '_blank');
   };
 
-  // Function to download the selected image
+  // Download selected image
   const handleDownload = (url) => {
     const a = document.createElement('a');
     a.href = url;
-    a.download = url.split('/').pop(); // Extract the image name from URL for download
+    a.download = url.split('/').pop();
     a.click();
   };
 
-  return (
-    <div className="relative flex flex-col items-center p-6 bg-gray-50 min-h-screen overflow-hidden">
-      {/* Flowing Water Background Animation */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 opacity-30 z-0 animate-wave"></div>
+  // Set background image
+  const handleSetBackground = (url) => {
+    const backgroundContainer = document.getElementById('background-container');
+    if (backgroundContainer) {
+      backgroundContainer.style.backgroundImage = `url(${url})`;
+      backgroundContainer.style.backgroundSize = 'cover';
+      backgroundContainer.style.backgroundPosition = 'center';
+      backgroundContainer.style.backgroundAttachment = 'fixed';
+      alert('Background image set!');
+    } else {
+      console.error('Background container not found!');
+    }
+  };
 
-      <h2 className="text-3xl font-semibold mb-6 text-white z-10">Upload Your Image</h2>
+  return (
+    <div className="relative flex flex-col items-center p-6 bg-black min-h-screen overflow-hidden">
+      {/* Header */}
+      <div className="fixed top-0 left-0 w-full bg-black shadow-md z-20 flex justify-between items-center px-6 py-4 text-green-400">
+        <h1 className="text-3xl font-bold">Image Upload</h1>
+        {selectedForActions.length > 0 && (
+          <div className="flex space-x-4">
+            <button
+              onClick={handleDeleteSelected}
+              className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              <Trash className="mr-2" /> Delete
+            </button>
+            <button
+              onClick={handleShareSelected}
+              className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              <Share2 className="mr-2" /> Share
+            </button>
+            <button
+              onClick={() => handleDownload(selectedForActions[0])}
+              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <Download className="mr-2" /> Download
+            </button>
+            <button
+              onClick={() => handleSetBackground(selectedForActions[0])}
+              className="flex items-center bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+            >
+              <Image className="mr-2" /> Set Background
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Hidden File Input */}
       <input
         id="image-input"
         type="file"
         accept="image/*"
+        multiple
         onChange={handleImageChange}
         className="hidden"
       />
 
-      {/* Gallery of Uploaded Images */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6 w-full z-10">
+      {/* Gallery */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mt-6 w-full px-6">
         {imageUrls.map((url, index) => (
-          <div key={index} className="relative group transition-all duration-300 transform hover:scale-105">
+          <div key={index} className="relative group">
             <img
               src={url}
               alt={`Uploaded ${index}`}
-              className="w-full h-auto rounded-xl shadow-lg cursor-pointer transform transition-all hover:shadow-xl"
-              onClick={() => openModal(url)} // Open modal on image click
+              className="w-full h-48 object-cover rounded-lg shadow-md cursor-pointer transition-transform duration-300 hover:scale-105"
+              onClick={() => openModal(url)}
             />
             <input
               type="checkbox"
-              className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100"
-              checked={selectedImages.includes(url)}
+              className="absolute top-2 left-2 w-5 h-5 text-green-400 cursor-pointer"
+              checked={selectedForActions.includes(url)}
               onChange={() => handleSelectImage(url)}
             />
-            {selectedImages.includes(url) && (
-              <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 p-2 rounded-md text-white text-xs">
-                <button
-                  onClick={() => handleDownload(url)}
-                  className="text-white"
-                >
-                  Download
-                </button>
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Upload Button with Plus Icon at Bottom-Right */}
-      <div className="fixed bottom-6 right-6 z-10">
-        {uploading ? (
-          <div className="flex flex-col items-center space-y-4">
-            <svg
-              className="w-20 h-20 animate-spin text-blue-600"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 120 120"
-            >
-              <circle
-                cx="60"
-                cy="60"
-                r="50"
-                stroke="lightgray"
-                strokeWidth="10"
-                fill="none"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r="50"
-                stroke="blue"
-                strokeWidth="10"
-                strokeDasharray={`${(progress / 100) * Math.PI * 100} ${Math.PI * 100}`}
-                fill="none"
-              />
-            </svg>
-            <div className="text-blue-600 text-lg">{progress}%</div>
-            <div className="text-blue-600 text-sm">Uploading...</div>
-          </div>
-        ) : (
-          <button
-            onClick={selectedImage ? uploadImage : triggerFileInput} // Toggle between file input and upload
-            className="bg-blue-600 text-white p-6 rounded-full shadow-xl transform hover:scale-105 transition-all"
-          >
-            <span className="text-4xl">{selectedImage ? '✔' : '+'}</span> {/* Show check mark when file is selected */}
-          </button>
-        )}
+      {/* Image Modal */}
+      <ImageModal showModal={showModal} setShowModal={setShowModal} modalImageUrl={modalImageUrl} />
+
+      {/* Upload Button */}
+      <div className="mt-24 flex justify-center relative">
+        <motion.button
+          onClick={selectedImages.length > 0 ? uploadImages : triggerFileInput}
+          className="relative flex items-center justify-center bg-gradient-to-r from-green-400 to-teal-500 text-white px-8 py-4 rounded-full shadow-xl hover:from-teal-500 hover:to-green-400 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="animate-spin mr-3 w-6 h-6" />
+              <span className="font-semibold text-lg">Uploading...</span>
+            </>
+          ) : selectedImages.length > 0 ? (
+            <>
+              <CheckCircle className="mr-3 w-6 h-6" />
+              <span className="font-semibold text-lg">
+                Upload {selectedImages.length} Images
+              </span>
+            </>
+          ) : (
+            <>
+              <Plus className="mr-3 w-6 h-6" />
+              <span className="font-semibold text-lg">Select Images</span>
+            </>
+          )}
+        </motion.button>
       </div>
 
-      {/* Action Buttons */}
-      {selectedImages.length > 0 && (
-        <div className="flex space-x-6 mt-6 z-10">
-          <button
-            onClick={handleDeleteSelected}
-            className="bg-red-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-all"
+      {/* Upload Progress */}
+      {uploading && (
+        <div className="mt-4 w-full max-w-md bg-gray-800 rounded-xl overflow-hidden shadow-lg">
+          <div
+            className="bg-gradient-to-r from-green-400 via-teal-500 to-blue-600 text-xs font-semibold text-white text-center p-1 leading-none rounded-full shadow-inner"
+            style={{ width: `${progress}%` }}
           >
-            Delete Selected
-          </button>
-          <button
-            onClick={handleShareSelected}
-            className="bg-green-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-all"
-          >
-            Share via WhatsApp
-          </button>
-        </div>
-      )}
-
-      {/* Modal for Full Image */}
-      {showModal && (
-        <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-75 flex items-center justify-center z-50"
-          onClick={closeModal} // Close on clicking outside the modal
-        >
-          <div className="relative w-full max-w-4xl p-4 bg-white rounded-lg">
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-white bg-red-600 p-2 rounded-full"
-            >
-              X
-            </button>
-            <img
-              src={modalImageUrl}
-              alt="Full-size"
-              className="w-full h-auto rounded-xl shadow-lg"
-            />
+            {progress}%
           </div>
         </div>
       )}

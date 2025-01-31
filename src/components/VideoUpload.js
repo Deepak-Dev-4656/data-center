@@ -1,121 +1,188 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { FaPlus } from "react-icons/fa";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 
-const VideoUpload = () => {
+const VideoUploadPage = () => {
+  const [uploadedVideos, setUploadedVideos] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-  const [videos, setVideos] = useState([]); // Stores video URLs
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState(null);
 
-  const CLOUDINARY_API_URL = "https://api.cloudinary.com/v1_1/drqf2lmep";
+  const CLOUDINARY_API_URL = "https://api.cloudinary.com/v1_1/drqf2lmep/upload";
   const UPLOAD_PRESET = "imagestor";
-  const API_KEY = "888151417773467";
-  const API_SECRET = "k8JJJWypNfOamsgwJitOhsuu388";
 
-  // Fetch all uploaded videos from Cloudinary
-  const fetchVideos = async () => {
-    try {
-      const response = await axios.get(`${CLOUDINARY_API_URL}/resources/video`, {
-        params: {
-          max_results: 50, // Adjust as needed to limit the number of videos fetched
-        },
-        headers: {
-          Authorization: `Basic ${btoa(`${API_KEY}:${API_SECRET}`)}`,
-        },
-      });
-      const fetchedVideos = response.data.resources.map((video) => video.secure_url);
-      setVideos(fetchedVideos); // Set videos in state
-    } catch (error) {
-      console.error("Error fetching videos from Cloudinary:", error);
-    }
-  };
-
-  // Load videos on component mount
   useEffect(() => {
-    fetchVideos();
+    const savedVideos = JSON.parse(localStorage.getItem("uploadedVideos")) || [];
+    setUploadedVideos(savedVideos);
   }, []);
 
-  const handleFileSelectAndUpload = async (e) => {
+  const handleVideoUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file || !file.type.includes("video")) {
-      setUploadError("Please select a valid video file.");
+    if (!file) return;
+
+    // File type validation
+    if (!file.type.startsWith("video/")) {
+      alert("Please upload a valid video file.");
       return;
     }
-
-    setUploadError(null);
-    setUploading(true);
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", UPLOAD_PRESET);
 
-    try {
-      const response = await axios.post(
-        `${CLOUDINARY_API_URL}/video/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
 
-      const uploadedVideoUrl = response.data.secure_url;
-      setVideos((prevVideos) => [...prevVideos, uploadedVideoUrl]); // Update state with new video
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", CLOUDINARY_API_URL);
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(progress);
+      }
+    });
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        if (data.secure_url) {
+          const newVideos = [...uploadedVideos, data.secure_url];
+          setUploadedVideos(newVideos);
+          localStorage.setItem("uploadedVideos", JSON.stringify(newVideos));
+          alert("Video uploaded successfully!");
+        }
+      } else {
+        setError("Failed to upload video. Please try again.");
+      }
       setUploading(false);
-    } catch (error) {
-      console.error("Upload failed:", error);
-      setUploadError("Error uploading video, please try again.");
+      setUploadProgress(0);
+    };
+
+    xhr.onerror = () => {
+      setError("An error occurred during the upload. Please try again.");
       setUploading(false);
-    }
+      setUploadProgress(0);
+    };
+
+    xhr.send(formData);
+  };
+
+  const handleShareOnWhatsapp = (videoUrl) => {
+    const shareText = `Check out this awesome video: ${videoUrl}`;
+    const encodedText = encodeURIComponent(shareText);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   return (
-    <div className="relative min-h-screen bg-gray-100 flex flex-col items-center py-8">
-      <h1 className="text-3xl font-bold mb-6">Video Upload and Gallery</h1>
+    <div
+      style={{
+        backgroundImage: "url('Templates & Apps - Copy.jpg')", // Add your image URL here
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        minHeight: "100vh",
+        position: "relative",
+      }}
+    >
+      {/* Overlay for better visibility of text */}
+      <div
+        className="absolute inset-0 bg-black opacity-50"
+        style={{ zIndex: -1 }}
+      ></div>
 
-      {uploadError && <div className="text-red-500 mb-4">{uploadError}</div>}
+      {/* Navbar */}
+      <nav className="w-full bg-gray-900 text-green-400 p-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold font-mono">Hacker Video Upload</h1>
 
-      {/* Video Gallery */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl px-4">
-        {videos.map((videoUrl, index) => (
-          <div
-            key={index}
-            className="p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition"
-          >
-            <video controls className="w-full rounded-md">
-              <source src={videoUrl} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+        {/* Upload Progress as Water Tank */}
+        {uploading && (
+          <div className="relative h-10 w-10 bg-gray-200 border-2 border-gray-600 rounded-md overflow-hidden">
+            <div
+              className="absolute bottom-0 left-0 w-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-300 ease-in-out"
+              style={{ height: `${uploadProgress}%` }}
+            ></div>
+            <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold">
+              {uploadProgress}%
+            </p>
           </div>
-        ))}
+        )}
+      </nav>
+
+      {/* Error Message */}
+      {error && (
+        <div className="text-red-500 text-center mt-4">{error}</div>
+      )}
+
+      {/* Page Content */}
+      <div className="w-full max-w-2xl mt-6 mx-auto">
+        <h2 className="text-xl font-semibold font-mono mb-2">Uploaded Videos</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {uploadedVideos.length === 0 ? (
+            <div className="col-span-2 text-center text-xl font-semibold text-gray-500">
+              No videos uploaded yet. Upload now!
+            </div>
+          ) : (
+            uploadedVideos.map((videoUrl, index) => (
+              <div
+                key={index}
+                className="relative rounded-lg overflow-hidden shadow-xl bg-black"
+                style={{ width: "100%", aspectRatio: "16/9" }}
+              >
+                <video
+                  controls
+                  className="w-full h-full object-cover"
+                  style={{ maxHeight: "300px" }}
+                >
+                  <source src={videoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                {/* WhatsApp Share Button */}
+                <button
+                  className="absolute top-2 right-2 bg-gradient-to-r from-green-400 to-blue-500 text-white p-4 rounded-full hover:bg-green-700 transition-all transform hover:scale-110 shadow-xl flex items-center space-x-2"
+                  onClick={() => handleShareOnWhatsapp(videoUrl)}
+                  title="Share on WhatsApp"
+                >
+                  <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Share</span>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Floating Button for File Upload */}
-      <div className="fixed bottom-4 right-4">
-        <label
-          htmlFor="video-upload"
-          className={`flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-full shadow-lg cursor-pointer ${
-            uploading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+      {/* Upload Video Button */}
+      <input
+        id="video-upload"
+        type="file"
+        accept="video/*"
+        onChange={handleVideoUpload}
+        className="hidden"
+      />
+
+      <label
+        htmlFor="video-upload"
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-green-400 to-blue-500 text-white p-4 rounded-full shadow-xl cursor-pointer hover:bg-green-700 transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="w-6 h-6"
         >
-          {uploading ? (
-            <span className="text-sm">...</span>
-          ) : (
-            <FaPlus className="text-2xl" />
-          )}
-        </label>
-        <input
-          id="video-upload"
-          type="file"
-          accept="video/*"
-          onChange={handleFileSelectAndUpload}
-          className="hidden"
-          disabled={uploading}
-        />
-      </div>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 16v-8m-4 4h8M20 12c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8z"
+          />
+        </svg>
+      </label>
     </div>
   );
 };
 
-export default VideoUpload;
+export default VideoUploadPage;
