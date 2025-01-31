@@ -12,7 +12,7 @@ function App() {
     <Router>
       <div className="bg-gray-100 min-h-screen">
         
-        <main className="p-4">
+        <main className="p-0">
           <Routes>
             <Route path="/" element={<HomePage />} />  {/* HomePage as the default route */}
             <Route path="/images" element={<ImageUpload />} />
