@@ -41,3 +41,173 @@ code {
   inset: 0;
   opacity: 0.7;
 }
+/* Keyframe animation for moving cards from below */
+@keyframes moveUp {
+  0% {
+    transform: translateY(150px); /* Start from below */
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0); /* End at normal position */
+    opacity: 1;
+  }
+}
+
+.upload-card {
+  opacity: 0; /* Initially hidden */
+  transform: translateY(150px); /* Start 150px below */
+  transition: all 0.8s ease-out;
+}
+
+.upload-card.animate-up {
+  animation: moveUp 1s ease-out forwards; /* Animation when in view */
+}
+
+/* Optional hover effect to enhance interactivity */
+.upload-card:hover {
+  transform: translateY(-5px);
+  transition: transform 0.3s ease-out;
+}
+/* Glitch effect for titles */
+.glitch-effect {
+  position: relative;
+  font-family: 'Courier New', monospace;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.glitch-effect::before,
+.glitch-effect::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: #39ff14; /* Neon Green */
+  z-index: -1;
+  animation: glitch-anim 1s infinite;
+}
+
+.glitch-effect::before {
+  left: -2px;
+  animation-delay: 0.1s;
+}
+
+.glitch-effect::after {
+  left: 2px;
+  animation-delay: 0.2s;
+}
+
+@keyframes glitch-anim {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, -2px);
+  }
+  40% {
+    transform: translate(2px, 2px);
+  }
+  60% {
+    transform: translate(-2px, -2px);
+  }
+  80% {
+    transform: translate(2px, 2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+.resume-container {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f9;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.resume-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.name {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.contact-info a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+h2 {
+  color: #333;
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+section {
+  margin-bottom: 20px;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ul li {
+  margin-bottom: 8px;
+}
+
+.project-item {
+  margin-bottom: 12px;
+}
+
+.project-item h3 {
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.project-item p {
+  font-size: 1rem;
+  color: #666;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+/* Advanced Typing Effect */
+.typing-effect {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 4px solid #00bcd4; /* Thicker cursor for visibility */
+  color: #4436fc; /* White text color */
+  font-family: 'Courier New', Courier, monospace; /* Monospace font for that classic typing feel */
+  font-size: 2.5rem; /* Slightly larger text */
+  letter-spacing: 0.1em; /* Spaced-out letters for a cleaner effect */
+  animation: typing 4s steps(40) 1s 1 normal both, blink 0.75s step-end infinite;
+  transition: color 0.3s ease; /* Smooth color change when typing */
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 78%; /* Make the text expand fully */
+  }
+}
+
+@keyframes blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+/* Hover Effect to change text color when the typing animation is complete */
+.typing-effect:hover {
+  color: #ff4081; /* Text color changes on hover */
+  border-color: #ff4081; /* Border color changes to match */
+}
