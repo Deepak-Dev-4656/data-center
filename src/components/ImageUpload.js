@@ -12,7 +12,7 @@ const ImageUpload = () => {
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [selectedForActions, setSelectedForActions] = useState([]); // Selected images for actions
   const [progress, setProgress] = useState(0);
-  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+  const MAX_FILE_SIZE = 7 * 1024 * 1024; // 1MB
   const MAX_FILES = 25; // Maximum number of files allowed
 
   // Function to handle multiple file selection
