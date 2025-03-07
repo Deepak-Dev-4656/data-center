@@ -10,11 +10,19 @@ const HomePage = () => {
 
   const correctPassword = "4656";
 
+  // Function to handle login on clicking the button
   const handleLogin = () => {
     if (password === correctPassword) {
       setIsAuthenticated(true);
     } else {
       alert("⚠️ ACCESS DENIED! Wrong Password.");
+    }
+  };
+
+  // Function to handle "Enter" key press
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleLogin();
     }
   };
 
@@ -31,12 +39,13 @@ const HomePage = () => {
           <h2 className="text-4xl font-bold mb-6 glitch text-green-400">
             🔓 ACCESS REQUIRED
           </h2>
-          
+
           {/* Password Input */}
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyPress}  // Add keydown event to listen for "Enter"
             className="p-3 text-black bg-green-200 rounded-md w-72 text-center 
                       border border-green-500 focus:ring-2 focus:ring-green-400 
                       focus:outline-none transition duration-300 ease-in-out"
