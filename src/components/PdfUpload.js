@@ -13,11 +13,11 @@ const PdfUpload = () => {
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file && file.size <= 10485760 && file.type === 'application/pdf') { // 10MB max size
+    if (file && file.type === 'application/pdf') {
       setPdfFile(file);
       setError('');
     } else {
-      setError('Please select a valid PDF file under 10MB.');
+      setError('Please select a valid PDF file.');
     }
   };
 
