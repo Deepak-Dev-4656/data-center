@@ -1,237 +1,185 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { AiOutlineCloudUpload, AiOutlineFilePdf } from 'react-icons/ai';
-import { useDropzone } from 'react-dropzone';
-import { Document, Page, pdfjs } from 'react-pdf';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 const PdfUpload = () => {
-  const [pdfFiles, setPdfFiles] = useState([]);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [customName, setCustomName] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [uploadUrls, setUploadUrls] = useState(
-    JSON.parse(localStorage.getItem('pdfUrls')) || []
+  const [uploadData, setUploadData] = useState(
+    JSON.parse(localStorage.getItem('pdfData')) || []
   );
   const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [pdfLoadingError, setPdfLoadingError] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pdfPerPage] = useState(3);  // You can adjust the number of PDFs shown per page
 
-  const onDrop = (acceptedFiles) => {
-    const newPdfFiles = acceptedFiles.filter((file) => {
-      if (file.size > 10485760) { // 10MB in bytes
-        setError('File size exceeds 10MB');
-        return false;
-      }
-      if (file.type !== 'application/pdf') {
-        setError('Please select valid PDF files');
-        return false;
-      }
-      return true;
-    });
-
-    if (newPdfFiles.length > 0) {
-      setPdfFiles((prevFiles) => [...prevFiles, ...newPdfFiles]);
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.size <= 10485760 && file.type === 'application/pdf') { // 10MB max size
+      setPdfFile(file);
       setError('');
+    } else {
+      setError('Please select a valid PDF file under 10MB.');
     }
   };
 
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop,
-    accept: '.pdf',
-  });
+  const handleNameChange = (event) => {
+    setCustomName(event.target.value);
+  };
 
   const handleUpload = async () => {
-    if (pdfFiles.length === 0) {
-      setError('Please select at least one PDF file to upload');
+    if (!pdfFile) {
+      setError('Please select a PDF file to upload.');
+      return;
+    }
+
+    if (!customName) {
+      setError('Please enter a name for the PDF.');
       return;
     }
 
     setUploading(true);
     setUploadProgress(0);
 
-    for (let i = 0; i < pdfFiles.length; i++) {
-      const formData = new FormData();
-      formData.append('file', pdfFiles[i]);
-      formData.append('upload_preset', 'imagestor');
-      formData.append('folder', 'Pdfs');
+    const formData = new FormData();
+    formData.append('file', pdfFile);
+    formData.append('upload_preset', 'imagestor');
+    formData.append('folder', 'Pdfs');
 
-      try {
-        const response = await axios.post(
-          'https://api.cloudinary.com/v1_1/drqf2lmep/upload',
-          formData,
-          {
-            onUploadProgress: (progressEvent) => {
-              const percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              setUploadProgress(percentCompleted);
-            },
-          }
-        );
+    try {
+      const response = await axios.post(
+        'https://api.cloudinary.com/v1_1/drqf2lmep/upload',
+        formData,
+        {
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
+          },
+        }
+      );
 
-        setUploadUrls((prevUrls) => [
-          ...prevUrls,
-          response.data.secure_url,
-        ]);
-        localStorage.setItem(
-          'pdfUrls',
-          JSON.stringify([...uploadUrls, response.data.secure_url])
-        );
-      } catch (err) {
-        setError('Upload failed. Please try again.');
-      }
+      const uploadedPdfUrl = response.data.secure_url;
+      const newPdfData = {
+        url: uploadedPdfUrl,
+        name: customName,
+      };
+
+      // Save uploaded PDF with custom name to local storage
+      const updatedPdfData = [...uploadData, newPdfData];
+      setUploadData(updatedPdfData);
+      localStorage.setItem('pdfData', JSON.stringify(updatedPdfData));
+
+      setPdfFile(null);
+      setCustomName('');
+    } catch (err) {
+      setError('Upload failed. Please try again.');
     }
 
     setUploading(false);
-    setPdfFiles([]);
-  };
-
-  const extractFileName = (url) => {
-    const parts = url.split('/');
-    return parts[parts.length - 1];
-  };
-
-  const onLoadError = (error) => {
-    setPdfLoadingError('Failed to load PDF file.');
   };
 
   const deletePdf = (url) => {
-    const newUrls = uploadUrls.filter((item) => item !== url);
-    setUploadUrls(newUrls);
-    localStorage.setItem('pdfUrls', JSON.stringify(newUrls));
+    const newPdfData = uploadData.filter((item) => item.url !== url);
+    setUploadData(newPdfData);
+    localStorage.setItem('pdfData', JSON.stringify(newPdfData));
   };
 
-  const totalPages = Math.ceil(uploadUrls.length / pdfPerPage);
-
-  const handlePageChange = (direction) => {
-    if (direction === 'next' && currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    } else if (direction === 'prev' && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+  const handleShare = (url) => {
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(url)}`;
+    window.open(whatsappUrl, '_blank');
   };
-
-  const displayedPdfs = uploadUrls.slice(
-    (currentPage - 1) * pdfPerPage,
-    currentPage * pdfPerPage
-  );
 
   return (
-    <div className="max-w-4xl mx-auto p-8 bg-gradient-to-r from-teal-100 via-blue-100 to-indigo-100 shadow-xl rounded-2xl">
-      <h2 className="text-4xl font-bold text-center mb-8 text-blue-900">
-        Advanced PDF Upload with Smooth Interactions
-      </h2>
+    <div className="max-w-4xl mx-auto p-8 bg-gradient-to-r from-blue-100 via-purple-100 to-indigo-100 shadow-xl rounded-2xl">
+      <h2 className="text-4xl font-bold text-center mb-8 text-blue-900">Advanced PDF Upload</h2>
 
       {error && <p className="text-red-600 text-lg text-center mb-6">{error}</p>}
 
-      <div
-        {...getRootProps()}
-        className="border-4 border-dashed border-teal-600 p-12 mb-8 text-center rounded-xl cursor-pointer hover:bg-teal-50 transition-all transform hover:scale-105"
-      >
-        <input {...getInputProps()} />
-        <div className="text-2xl font-semibold text-teal-800">
-          <AiOutlineCloudUpload className="inline-block mr-4 text-5xl animate-pulse" />
-          Drag & Drop PDFs here, or click to select files
-        </div>
-        <div className="mt-2 text-gray-600">Max file size: 10MB</div>
+      {/* File Upload Section */}
+      <div className="text-center mb-6">
+        <input
+          type="file"
+          accept=".pdf"
+          onChange={handleFileChange}
+          className="w-full max-w-md mx-auto py-2 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
 
-      <button
-        onClick={handleUpload}
-        disabled={uploading}
-        className="w-full bg-gradient-to-r from-teal-600 to-teal-800 text-white py-4 rounded-lg flex items-center justify-center hover:from-teal-700 hover:to-teal-900 transition-all transform hover:scale-105"
-      >
-        {uploading ? (
-          <div className="flex items-center space-x-4">
-            <div className="loader mr-2"></div>
+      {/* Custom Name Input */}
+      <div className="text-center mb-6">
+        <input
+          type="text"
+          placeholder="Enter PDF name"
+          value={customName}
+          onChange={handleNameChange}
+          className="w-full max-w-md mx-auto py-2 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {/* Upload Button */}
+      <div className="text-center mb-8">
+        <button
+          onClick={handleUpload}
+          disabled={uploading}
+          className="w-full max-w-md mx-auto bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105"
+        >
+          {uploading ? (
             <span>Uploading {uploadProgress}%</span>
+          ) : (
+            'Upload PDF'
+          )}
+        </button>
+        {uploading && (
+          <div className="mt-4">
+            <progress value={uploadProgress} max="100" className="w-full h-2 rounded-lg" />
           </div>
-        ) : (
-          <>
-            <AiOutlineCloudUpload className="mr-4" /> Upload PDFs
-          </>
         )}
-      </button>
+      </div>
 
-      {uploading && (
-        <div className="w-full bg-gray-200 mt-6 rounded-full h-2.5">
-          <div
-            className="bg-teal-600 h-2.5 rounded-full transition-all"
-            style={{ width: `${uploadProgress}%` }}
-          ></div>
-        </div>
-      )}
-
+      {/* Display Uploaded PDFs */}
       <div className="mt-12">
-        <h3 className="text-3xl font-semibold text-center mb-8 text-teal-900">
-          Uploaded PDFs
-        </h3>
-        {displayedPdfs.length > 0 ? (
-          displayedPdfs.map((url, index) => (
-            <div
-              key={index}
-              className="mb-8 p-6 bg-white rounded-lg shadow-xl transform hover:scale-105 transition-all flex items-center space-x-8"
-            >
-              <div className="flex-shrink-0">
-                <Document
-                  file={url}
-                  onLoadError={onLoadError}
-                  className="pdf-preview"
-                >
-                  <Page pageNumber={1} width={100} />
-                </Document>
-                {pdfLoadingError && (
-                  <div className="text-red-600 text-center">{pdfLoadingError}</div>
-                )}
-              </div>
-              <div className="flex-grow">
-                <div className="flex items-center space-x-3 mb-4">
-                  <AiOutlineFilePdf className="text-teal-500 text-4xl" />
-                  <span className="text-xl font-medium text-gray-800">
-                    {extractFileName(url)}
-                  </span>
+        <h3 className="text-3xl font-semibold text-center mb-8 text-blue-900">Uploaded PDFs</h3>
+
+        {uploadData.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {uploadData.map((item, index) => (
+              <div
+                key={index}
+                className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-xl font-medium">{item.name}</h4>
                 </div>
-                <div className="text-center mt-4">
+                <div className="text-center">
                   <a
-                    href={url}
+                    href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-teal-600 hover:underline"
+                    className="text-blue-600 hover:underline mb-4 block"
                   >
-                    View Uploaded PDF
+                    View PDF
                   </a>
                 </div>
-                <button
-                  onClick={() => deletePdf(url)}
-                  className="mt-4 text-red-600 hover:text-red-800"
-                >
-                  Delete
-                </button>
+                <div className="flex justify-center space-x-4">
+                  <button
+                    onClick={() => handleShare(item.url)}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
+                  >
+                    Share
+                  </button>
+                  <button
+                    onClick={() => deletePdf(item.url)}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <p className="text-gray-600 text-center">No PDFs uploaded yet.</p>
+          <p className="text-center text-gray-600">No PDFs uploaded yet.</p>
         )}
-      </div>
-
-      <div className="flex justify-center mt-8 space-x-4">
-        <button
-          onClick={() => handlePageChange('prev')}
-          disabled={currentPage === 1}
-          className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-400"
-        >
-          Previous
-        </button>
-        <span className="text-xl">{`Page ${currentPage} of ${totalPages}`}</span>
-        <button
-          onClick={() => handlePageChange('next')}
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 bg-teal-600 text-white rounded-lg disabled:bg-gray-400"
-        >
-          Next
-        </button>
       </div>
     </div>
   );
